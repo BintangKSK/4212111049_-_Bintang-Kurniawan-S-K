@@ -1,0 +1,58 @@
+import numpy as np
+from sklearn import datasets
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from sklearn.metrics import confusion_matrix, accuracy_score, precision_score
+from skimage.feature import hog
+from skimage import exposure
+import cv2
+
+# Load dataset MNIST
+mnist = datasets.fetch_openml('mnist_784')
+data = mnist.data.astype('float32')
+target = mnist.target.astype('int64')
+
+# Bagi data menjadi data latih dan data uji
+train_data, test_data, train_target, test_target = train_test_split(data, target, test_size=0.1, random_state=42)
+
+# HOG Feature Extraction
+def extract_hog_features(data):
+    features = []
+    for image in data:
+        # Reshape gambar menjadi bentuk yang sesuai
+        image_reshaped = image.reshape((28, 28))
+        
+        # Ekstraksi HOG features
+        fd, hog_image = hog(image_reshaped, orientations=8, pixels_per_cell=(4, 4),
+                            cells_per_block=(1, 1), visualize=True)
+        
+        features.append(fd)
+    return np.array(features)
+
+# Ekstraksi HOG features untuk data latih dan uji
+train_features = extract_hog_features(train_data)
+test_features = extract_hog_features(test_data)
+
+# Normalisasi fitur menggunakan StandardScaler
+scaler = StandardScaler().fit(train_features)
+train_features = scaler.transform(train_features)
+test_features = scaler.transform(test_features)
+
+# Latih model SVM
+model = SVC(kernel='linear', C=1)
+model.fit(train_features, train_target)
+
+# Prediksi pada data uji
+predictions = model.predict(test_features)
+
+# Evaluasi performa
+conf_matrix = confusion_matrix(test_target, predictions)
+accuracy = accuracy_score(test_target, predictions)
+precision = precision_score(test_target, predictions, average='weighted')
+
+# Menampilkan hasil evaluasi
+print("Confusion Matrix:")
+print(conf_matrix)
+print("\nAccuracy: {:.2f}%".format(accuracy * 100))
+print("Precision: {:.2f}%".format(precision * 100))
